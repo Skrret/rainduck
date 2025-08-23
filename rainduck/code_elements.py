@@ -7,10 +7,11 @@ from rainduck.tokens import Char, Token
 class _CodeElementMeta(ABCMeta):
 
     precedence: float = 0
+    assign_to_list: bool
 
     def __init__(cls, name: str, bases: tuple[type], namespace: dict[str, Any]) -> None:
         super().__init__(name, bases, namespace)
-        if namespace["assign_to_list"]:
+        if namespace.get("assign_to_list", True):
             for i in range(len(code_elements)):
                 if code_elements[i].precedence >= cls.precedence:
                     code_elements.insert(i, cls)
@@ -22,10 +23,12 @@ class _CodeElementMeta(ABCMeta):
         pass
 
 
-code_elements: list[_CodeElementMeta]
+code_elements: list[_CodeElementMeta] = []
 
 
 class CodeElement(metaclass=_CodeElementMeta):
+
+    assign_to_list = False
 
     @abstractmethod
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
@@ -33,8 +36,7 @@ class CodeElement(metaclass=_CodeElementMeta):
 
 
 class BrainFuck(CodeElement):
-    pass
-
+    assign_to_list = False
 
 class BrainFuckOperation(BrainFuck):
 
@@ -48,6 +50,6 @@ class BrainFuckOperation(BrainFuck):
     def take(cls, code: list[Token]) -> Self | None:
         fst = code.pop(0)
         match fst:
-            case Char(c) if c in "<>+-":
+            case Char(c) if c in "<>+-,.":
                 return cls(c)
         return None
