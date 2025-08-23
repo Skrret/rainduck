@@ -116,3 +116,9 @@ class RainDuckArgumentError(RainDuckValueError):
     """Exception raised when macro has invalid arguments."""
 
     default_message = "Invalid arguments"
+
+
+class RainDuckSyntaxError(RainDuckError):
+    """Exception raised while parsing when invalid syntax foud"""
+
+    default_message = "Invalid syntax"

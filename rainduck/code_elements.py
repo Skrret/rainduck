@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Self
 
+from rainduck.errors import RainDuckSyntaxError
 from rainduck.tokens import Char, Token
 
 
@@ -38,6 +39,7 @@ class CodeElement(metaclass=_CodeElementMeta):
 class BrainFuck(CodeElement):
     assign_to_list = False
 
+
 class BrainFuckOperation(BrainFuck):
 
     precedence = 10
@@ -53,3 +55,49 @@ class BrainFuckOperation(BrainFuck):
             case Char(c) if c in "<>+-,.":
                 return cls(c)
         return None
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        return super().transpile(inverse)
+
+
+class BrainFuckLoop(BrainFuck):
+
+    precedence = 10
+    code: list[CodeElement]
+
+    def __init__(self, code: list[CodeElement]):
+        self.code = code
+
+    @classmethod
+    def take(cls, tokens: list[Token]) -> Self | None:
+        match tokens[0]:
+            case Char("[", line_pos, char_pos):
+                del tokens[0]
+                brackets = 0
+                code = []
+                while tokens:
+                    match tokens.pop(0), brackets:
+                        case Char("[") as t, _:
+                            brackets += 1
+                            code.append(t)
+                        case Char("]"), 0:
+                            break
+                        case Char("]") as t, _:
+                            brackets -= 1
+                            code.append(t)
+                        case t, _:
+                            code.append(t)
+                else:
+                    raise RainDuckSyntaxError("Missing ']'", line_pos, char_pos)
+                return cls(parse_list(code))
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        return super().transpile(inverse)
+
+
+class Multiplication(CodeElement):  # Not implemented now, so corresponding test fails
+    pass
+
+
+def parse_list(tokens: list[Token]) -> list[CodeElement]:  # Not implemented!
+    return []
