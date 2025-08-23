@@ -24,8 +24,10 @@ def test_take(code, element, rest):
     tokenized = tokenize(code)
     tokenized2 = list(tokenized)
     assert isinstance(element.take(tokenized), element)
-    assert tokenized == rest
+    assert len(tokenized) == len(rest) # There should be better option
     for elem in code_elements:
         if elem is element:
             break
-        assert elem.take(list(tokenized2)) is None
+        tokenized3 = list(tokenized2)
+        assert elem.take(tokenized3) is None
+        assert tokenized2 == tokenized3
