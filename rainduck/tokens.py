@@ -58,8 +58,7 @@ def _take_num(
 
 
 def tokenize(code: str) -> list[Token]:
-    """Take RainDuck code and return list of tokens.
-    """
+    """Take RainDuck code and return list of tokens."""
     code_list = list(code)
     char_pos = 0
     line_pos = 1
