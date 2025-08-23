@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Self
 
 from rainduck.errors import RainDuckSyntaxError
-from rainduck.tokens import Char, Token
+from rainduck.tokens import Char, Number, Token
 
 
 class _CodeElementMeta(ABCMeta):
@@ -96,8 +96,43 @@ class BrainFuckLoop(BrainFuck):
 
 
 class Multiplication(CodeElement):  # Not implemented now, so corresponding test fails
-    pass
+
+    precedence = 10
+    num: int
+    code: CodeElement
+    line_pos: int | None
+    char_pos: int | None
+
+    def __init__(
+        self, num: int, code: CodeElement, line_pos: int | None, char_pos: int | None
+    ) -> None:
+        self.num = num
+        self.code = code
+        self.line_pos = line_pos
+        self.char_pos = char_pos
+
+    @classmethod
+    def take(cls, code: list[Token]) -> "CodeElement | None":
+        match code[0]:
+            case Number(n, line_pos, char_pos):
+                del code[0]
+                return cls(n, _take_elem(code), line_pos, char_pos)
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        return super().transpile(inverse)
 
 
-def parse_list(tokens: list[Token]) -> list[CodeElement]:  # Not implemented!
-    return []
+def _take_elem(tokens: list[Token]) -> CodeElement:
+    for elem_cls in code_elements:
+        elem = elem_cls.take(tokens)
+        if not (elem is None):
+            return elem
+    t = tokens[0]
+    raise RainDuckSyntaxError("Unrecognized pattern", t.line_pos, t.char_pos)
+
+
+def parse_list(tokens: list[Token]) -> list[CodeElement]:
+    result = []
+    while tokens:
+        result.append(_take_elem(tokens))
+    return result
