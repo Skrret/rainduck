@@ -122,3 +122,9 @@ class RainDuckSyntaxError(RainDuckError):
     """Exception raised while parsing when invalid syntax foud"""
 
     default_message = "Invalid syntax"
+
+
+class RainDuckInversionError(RainDuckError):
+    """Exception raised when code can't be inverter by negative nuber"""
+
+    default_message = "Code can't be inverted"

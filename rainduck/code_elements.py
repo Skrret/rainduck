@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Self
 
-from rainduck.errors import RainDuckSyntaxError
+from rainduck.errors import RainDuckInversionError, RainDuckSyntaxError
 from rainduck.tokens import Char, Number, Token
 
 
@@ -39,6 +39,10 @@ class CodeElement(metaclass=_CodeElementMeta):
 class BrainFuck(CodeElement):
     assign_to_list = False
 
+    @abstractmethod
+    def __str__(self) -> str:
+        pass
+
 
 class BrainFuckOperation(BrainFuck):
 
@@ -50,23 +54,39 @@ class BrainFuckOperation(BrainFuck):
 
     @classmethod
     def take(cls, code: list[Token]) -> Self | None:
-        fst = code.pop(0)
+        fst = code[0]
         match fst:
             case Char(c) if c in "<>+-,.":
+                del code[0]
                 return cls(c)
         return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
-        return super().transpile(inverse)
+        return [
+            BrainFuckOperation(
+                {"+": "-", "-": "+", "<": ">", ">": "<"}.get(self.code, self.code)
+                if inverse
+                else self.code
+            )
+        ]
+
+    def __str__(self) -> str:
+        return self.code
 
 
 class BrainFuckLoop(BrainFuck):
 
     precedence = 10
     code: list[CodeElement]
+    line_pos: int | None
+    char_pos: int | None
 
-    def __init__(self, code: list[CodeElement]):
+    def __init__(
+        self, code: list[CodeElement], line_pos: int | None, char_pos: int | None
+    ):
         self.code = code
+        self.line_pos = line_pos
+        self.char_pos = char_pos
 
     @classmethod
     def take(cls, tokens: list[Token]) -> Self | None:
@@ -74,7 +94,7 @@ class BrainFuckLoop(BrainFuck):
             case Char("[", line_pos, char_pos):
                 del tokens[0]
                 brackets = 0
-                code = []
+                code: list[Token] = []
                 while tokens:
                     match tokens.pop(0), brackets:
                         case Char("[") as t, _:
@@ -89,10 +109,18 @@ class BrainFuckLoop(BrainFuck):
                             code.append(t)
                 else:
                     raise RainDuckSyntaxError("Missing ']'", line_pos, char_pos)
-                return cls(parse_list(code))
+                return cls(parse_list(code), line_pos, char_pos)
+        return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
-        return super().transpile(inverse)
+        if inverse:
+            raise RainDuckInversionError(
+                "Loop can't be inverted", self.line_pos, self.char_pos
+            )
+        return [BrainFuckLoop(self.code, self.line_pos, self.char_pos)]
+
+    def __str__(self) -> str:
+        return "[" + "".join(str(x) for x in self.code) + "]"
 
 
 class Multiplication(CodeElement):  # Not implemented now, so corresponding test fails
@@ -117,9 +145,19 @@ class Multiplication(CodeElement):  # Not implemented now, so corresponding test
             case Number(n, line_pos, char_pos):
                 del code[0]
                 return cls(n, _take_elem(code), line_pos, char_pos)
+        return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
-        return super().transpile(inverse)
+        inv = (self.num >= 0) == inverse
+        num = abs(self.num)
+        if inverse:
+            try:
+                return num * self.code.transpile(inv)
+            except RainDuckInversionError as e:
+                e.add_pointer(self.line_pos, self.char_pos)
+                raise e
+        else:
+            return num * self.code.transpile(inv)
 
 
 def _take_elem(tokens: list[Token]) -> CodeElement:
