@@ -72,7 +72,9 @@ def tokenize(code: str) -> list[Token]:
         elif char.isalpha() or char == "_":
             word, char_pos = _take_word(char, code_list, line_pos, char_pos)
             result.append(word)
-        elif char.isdecimal() or (char == "-" and code_list[0].isdecimal()):
+        elif char.isdecimal() or (
+            char == "-" and code_list and code_list[0].isdecimal()
+        ):
             (
                 num,
                 char_pos,

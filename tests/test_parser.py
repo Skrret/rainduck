@@ -37,5 +37,5 @@ def test_unknown_char_error(index, char):
     with pytest.raises(errors.RainDuckTokenError) as exc:
         tokens.tokenize(simple_code[:index] + char + simple_code[index + 1 :])
     e = exc.value
-    assert e.line_pos == simple_code[:index].count("\n") + 1
-    assert e.char_pos == (simple_code[index::-1] + "\n").find("\n")
+    assert e.traceback[0].line_pos == simple_code[:index].count("\n") + 1
+    assert e.traceback[0].char_pos == (simple_code[index::-1] + "\n").find("\n")
