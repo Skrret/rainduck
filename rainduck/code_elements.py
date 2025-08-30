@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import Any, Self
 
-from rainduck.errors import RainDuckInversionError, RainDuckSyntaxError
+from rainduck.errors import RainDuckArgumentError, RainDuckInversionError, RainDuckNameError, RainDuckSyntaxError
 from rainduck.tokens import Char, Number, Token, Word
 
 
@@ -261,7 +261,7 @@ class CodeBlock(CodeElement):
         cls, code: list[Token], parent: "CodeBlock | None" = None
     ) -> "CodeElement | None":
         match code[0]:
-            case Char("{", char_pos, line_pos):  # }
+            case Char("{", char_pos, line_pos):
                 del code[0]
                 macro_defs: list[Token] = []
                 match code[0]:
@@ -314,6 +314,70 @@ class CodeBlock(CodeElement):
                     )
                 return cls(tokens, macro_defs, parent)
         return None
+
+class MacroCall(CodeElement):
+
+    name: str
+    args: list[CodeElement]
+    kwds: dict[str, CodeElement]
+    parent: CodeBlock | None
+    line_pos: int | None
+    char_pos: int | None
+
+    def __init__(self, name: str, args: list[CodeElement] = [], kwds: dict[str, CodeElement] = {}, parent: CodeBlock | None = None, line_pos: int | None = None, char_pos: int | None = None) -> None:
+        self.name = name
+        self.args = args
+        self.kwds= kwds
+        self.parent = parent
+        self.line_pos = line_pos
+        self.char_pos = char_pos
+
+    @classmethod
+    def take(cls, code: list[Token], parent: "CodeBlock | None" = None) -> "CodeElement | None":
+        match code[0]:
+            case Word(name, line_pos, char_pos):
+                del code[0]
+                args = []
+                kwds = {}
+                if code:
+                    match code[0]:
+                        case Char("(", bracket_line_pos, bracket_char_pos):  # )
+                            del code[0]
+                            keywords = False
+                            while code:
+                                if len(code) < 2:
+                                    raise RainDuckSyntaxError("Arguments not finished, missing ')'", bracket_line_pos, bracket_char_pos)
+                                match code[0], code[1], keywords:
+                                    case Word(argname), Char("=", lp, cp), _:
+                                        del code[0]
+                                        del code[1]
+                                        if not code:
+                                            raise RainDuckSyntaxError("Expected argument value.", lp, cp)
+                                        kwds[argname] = _take_elem(code, parent)
+                                        keywords = True
+                                    case _, _, False:
+                                        args.append(_take_elem(code, parent))
+                                    case t, _, True:
+                                        raise RainDuckArgumentError("Positional argument follows keyword argument.", t.line_pos, t.char_pos)
+                                if not code:
+                                    raise RainDuckSyntaxError("Arguments not finished, missing ')'", bracket_line_pos, bracket_char_pos)
+                                match code.pop(0):
+                                    case Char(";"):
+                                        pass
+                                    case Char(")"):
+                                        break
+                                    case _:
+                                        raise RainDuckSyntaxError("Expected ';' or ')'.")
+                return cls(name, args, kwds, parent, line_pos, char_pos)
+        return None
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        block = self.parent
+        while not(block is None):
+            if self.name in block.macros:
+                return block.macros[self.name](*self.args, **self.kwds)
+            block = block.parent
+        raise RainDuckNameError(f"'{self.name}' is not defined.", self.line_pos, self.char_pos)
 
 
 def _take_elem(tokens: list[Token], parent: "CodeBlock | None" = None) -> CodeElement:
