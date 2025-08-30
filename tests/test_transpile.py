@@ -12,16 +12,23 @@ def test_bf_to_bf(code):
 
 
 def inversion(code: str):
-    return "".join([{"+": "-", "-": "+", "<": ">", ">": "<"}.get(c, c) for c in code])
+    return "".join([{"+": "-", "-": "+", "<": ">", ">": "<"}.get(c, c) for c in code[::-1]])
 
 
 @pytest.mark.parametrize(
-    ("first", "rest", "num"),
-    [(",", "[,]", -3), ("[[++++]<<<]", "--", 5), ("[[,],>]", "", 0), ("<", "[,]", -1)],
+    ("first", "rest", "num", "block"),
+    [
+        (",", "[,]", -3, False),
+        ("[[++++]<<<]", "--", 5, False),
+        ("[[,],>]", "", 0, False),
+        ("<", "[,]", -1, False),
+        ("+-.,<>", "+", -2, True),
+        ("", "[[-]>]", 7, True),
+    ],
 )
-def test_multiplication(first, rest, num):
+def test_multiplication(first, rest, num, block):
     """Test if RainDuck multiplication works same as python int * str"""
-    transpiled = transpile(str(num) + first + rest)
+    transpiled = transpile(str(num) + ("{" + first + "}" if block else first) + rest)
     if num >= 0:
         assert transpiled == num * first + rest
     else:

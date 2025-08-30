@@ -3,6 +3,7 @@ import pytest
 from rainduck.code_elements import (
     BrainFuckLoop,
     BrainFuckOperation,
+    CodeBlock,
     Multiplication,
     code_elements,
 )
@@ -15,6 +16,7 @@ from rainduck.tokens import Char, Number, Word, tokenize
         (">", BrainFuckOperation, "[,>]"),
         ("[.><]", BrainFuckLoop, "]}"),
         ("-31[9<+]", Multiplication, "5[,]"),
+        ("{<2[-,]+++}", CodeBlock, "]-1<>>"),
     ],
 )
 def test_take(code, element, rest):
