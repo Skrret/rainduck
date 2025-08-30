@@ -12,7 +12,9 @@ def test_bf_to_bf(code):
 
 
 def inversion(code: str):
-    return "".join([{"+": "-", "-": "+", "<": ">", ">": "<"}.get(c, c) for c in code[::-1]])
+    return "".join(
+        [{"+": "-", "-": "+", "<": ">", ">": "<"}.get(c, c) for c in code[::-1]]
+    )
 
 
 @pytest.mark.parametrize(
@@ -33,3 +35,28 @@ def test_multiplication(first, rest, num, block):
         assert transpiled == num * first + rest
     else:
         assert transpiled == abs(num) * inversion(first) + rest
+
+
+@pytest.mark.parametrize(
+    ("macros", "code"),
+    [
+        (dict(right=">", right_loop="[right]"), "[,right+right_loop]"),
+        (
+            dict(left3minus4="<<<----", infinite="[left3minus4++++>>>]"),
+            "left3minus4[infinite]",
+        ),
+    ],
+)
+def test_macro(macros, code):
+    """Test if macros (without arguments) works as expected."""
+    code2 = code
+    for name, value in macros.items():
+        code = code.replace(name, value)
+    assert code == transpile(
+        "{"
+        + f"let {" ".join(name + " = {" + value + "}" for name, value in macros.items())} in {code2}"
+        + "}"
+    )
+
+
+# TODO: test macro arguments
