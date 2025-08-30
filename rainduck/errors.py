@@ -92,19 +92,6 @@ class RainDuckNameError(RainDuckError):
     default_message = "Not defined"
     macro_name: str | None
 
-    def __init__(
-        self,
-        name: str | None = None,
-        message: str | None = None,
-        line_pos: int | None = None,
-        char_pos: int | None = None,
-        macro_name: str | None = None,
-    ) -> None:
-        self.macro_name = name
-        if message is None and not (name is None):
-            message = f"'{name}' not defined."
-        super().__init__(message, line_pos, char_pos, macro_name)
-
 
 class RainDuckValueError(RainDuckError):
     """Exception raised when some value in RainDuck code is invalid"""
