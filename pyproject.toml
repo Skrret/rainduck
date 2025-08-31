@@ -1,13 +1,13 @@
 [project]
 name = "rainduck"
-version = "0.0.0"
+version = "0.1.0"
 requires-python = ">= 3.11"
 authors = [{name = "Lukáš Koma", email = "koma.luky@gmail.com"}]
 description = "A simple BrainFuck extension with macros"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = ["typer >= 0.12.3"]
+dependencies = ["typer"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
