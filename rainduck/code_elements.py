@@ -214,7 +214,6 @@ class Macro:
                         raise RainDuckArgumentError(f"Argument {name} not given.")
                     arguments[name] = value2
             macros = {}
-            print(f"args: {arguments}")
             for name, value in arguments.items():
                 macros[name] = Macro(name, OrderedDict(), value)
             code = cast(CodeBlock, code).add_macros(macros)

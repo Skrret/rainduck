@@ -62,4 +62,8 @@ def test_macro(macros, code):
     )
 
 
-# TODO: test macro arguments
+@pytest.mark.parametrize(
+    ("rainduck", "braifuck"), [("let id(x={}) = {x} in id id(2[>])", "[>][>]")]
+)
+def test_transpile(rainduck, braifuck):
+    assert transpile(rainduck) == braifuck
