@@ -7,6 +7,7 @@ from rich.console import Console
 app = typer.Typer()
 err_console = Console(stderr=True)
 
+
 @app.command()
 def main(source: str, output: str | None = None):
     with open(source) as f:
@@ -21,9 +22,11 @@ def main(source: str, output: str | None = None):
             out_filename = source[:-2] + "bf"
         else:
             out_filename = source + ".bf"
-    else: out_filename = output
+    else:
+        out_filename = output
     with open(out_filename, "w") as f:
         f.write(brainfuck)
+
 
 if __name__ == "__main__":
     app()

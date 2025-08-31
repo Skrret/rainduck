@@ -80,6 +80,11 @@ def tokenize(code: str) -> list[Token]:
                 char_pos,
             ) = _take_num(char, code_list, line_pos, char_pos)
             result.append(num)
+        elif char == "/" and code_list and code_list[0] == "/":
+            if "\n" in code_list:
+                del code_list[: code_list.index("\n")]
+            else:
+                code_list.clear()
         elif not char.isspace():
             result.append(Char(char, line_pos, char_pos))
     return result
