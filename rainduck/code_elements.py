@@ -247,6 +247,7 @@ class CodeBlock(CodeElement):
                         case Char("(", bracket_line_pos, bracket_char_pos):  # Take args
                             del macro_defs[0]
                             while macro_defs:
+                                print(name, "args:", macro_defs)
                                 token = macro_defs.pop(0)
                                 match token:
                                     case Char(")"):
@@ -260,8 +261,10 @@ class CodeBlock(CodeElement):
                                 match token:
                                     case Word(arg_name):
                                         match macro_defs.pop(0):
-                                            case Char(";" | ")"):
+                                            case Char(";" | ")" as c):
                                                 args[arg_name] = None
+                                                if c == ")":
+                                                    break
                                             case Char("=", cp, lp):
                                                 if not macro_defs:
                                                     raise RainDuckSyntaxError(
@@ -423,7 +426,7 @@ class MacroCall(CodeElement):
                                 match code[0], code[1], keywords:
                                     case Word(argname), Char("=", lp, cp), _:
                                         del code[0]
-                                        del code[1]
+                                        del code[0]
                                         if not code:
                                             raise RainDuckSyntaxError(
                                                 "Expected argument value.", lp, cp
