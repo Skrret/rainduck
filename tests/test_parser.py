@@ -18,24 +18,3 @@ def test_tokenization():
         tokens.Word("_b", 2, 16),
         tokens.Char("}", 2, 18),
     ]
-
-
-simple_code = """let move(from, to) = {from[- -1from to + -1to from]-1from}
-copy(from, to, storage) = {from[- -1from to+ -1to storage+ -1storage
-from]-1from move(storage, from)
-} in
-,copy({}, {3>})5{20+.>}
-"""
-
-
-@pytest.mark.parametrize(("index", "char"), [(67, "\\"), (0, "&"), (5, ":")])
-def test_unknown_char_error(index, char):
-    """Test if exception is raised in tokenization when unknown character found
-    and if the exception has correct position of the character.
-    """
-    index = index % len(simple_code)
-    with pytest.raises(errors.RainDuckTokenError) as exc:
-        tokens.tokenize(simple_code[:index] + char + simple_code[index + 1 :])
-    e = exc.value
-    assert e.traceback[0].line_pos == simple_code[:index].count("\n") + 1
-    assert e.traceback[0].char_pos == (simple_code[index::-1] + "\n").find("\n")

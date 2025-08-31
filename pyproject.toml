@@ -1,6 +1,6 @@
 [project]
 name = "rainduck"
-version = "0.1.0"
+version = "0.1.1"
 requires-python = ">= 3.11"
 authors = [{name = "Lukáš Koma", email = "koma.luky@gmail.com"}]
 description = "A simple BrainFuck extension with macros"

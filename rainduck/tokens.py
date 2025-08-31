@@ -80,10 +80,6 @@ def tokenize(code: str) -> list[Token]:
                 char_pos,
             ) = _take_num(char, code_list, line_pos, char_pos)
             result.append(num)
-        elif char in set("+-<>[]{}=(),."):
-            result.append(Char(char, line_pos, char_pos))
         elif not char.isspace():
-            raise errors.RainDuckTokenError(
-                f"Unknown character: '{char}'", line_pos, char_pos
-            )
+            result.append(Char(char, line_pos, char_pos))
     return result
