@@ -44,8 +44,9 @@ class RainDuckError(Exception):
         else:
             self.traceback = []
 
-    def __str__(self) -> str:
-        result = f"{self.name}: {self.message}"
+    def __str__(self, color: bool = False) -> str:
+        f = lambda x: x if color else ""
+        result = f("[bold red]") + self.name + f("[/bold red]") + ": " + self.message
         if self.traceback:
             result += "\n" + "\n".join([str(t) for t in self.traceback[::-1]])
         return result
@@ -78,6 +79,9 @@ class RainDuckError(Exception):
             pointer.char_pos = char_pos
         if not (macro_name is None):
             pointer.macro_name = macro_name
+
+    def colored(self) -> str:
+        return self.__str__(color=True)
 
 
 class RainDuckTokenError(RainDuckError):
