@@ -1,8 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from typing import Any, Self
+from typing import Any, Self, Sequence, cast
 
-from rainduck.errors import RainDuckArgumentError, RainDuckInversionError, RainDuckNameError, RainDuckSyntaxError
+from rainduck.errors import (
+    RainDuckArgumentError,
+    RainDuckError,
+    RainDuckInversionError,
+    RainDuckNameError,
+    RainDuckSyntaxError,
+)
 from rainduck.tokens import Char, Number, Token, Word
 
 
@@ -78,12 +84,12 @@ class BrainFuckOperation(BrainFuck):
 
 class BrainFuckLoop(BrainFuck):
 
-    code: list[CodeElement]
+    code: Sequence[CodeElement]
     line_pos: int | None
     char_pos: int | None
 
     def __init__(
-        self, code: list[CodeElement], line_pos: int | None, char_pos: int | None
+        self, code: Sequence[CodeElement], line_pos: int | None, char_pos: int | None
     ):
         self.code = code
         self.line_pos = line_pos
@@ -120,13 +126,19 @@ class BrainFuckLoop(BrainFuck):
             raise RainDuckInversionError(
                 "Loop can't be inverted", self.line_pos, self.char_pos
             )
-        return [BrainFuckLoop(self.code, self.line_pos, self.char_pos)]
+        return [
+            BrainFuckLoop(
+                sum([x.transpile() for x in self.code], []),
+                self.line_pos,
+                self.char_pos,
+            )
+        ]
 
     def __str__(self) -> str:
         return "[" + "".join(str(x) for x in self.code) + "]"
 
 
-class Multiplication(CodeElement):  # Not implemented now, so corresponding test fails
+class Multiplication(CodeElement):
 
     num: int
     code: CodeElement
@@ -166,21 +178,64 @@ class Multiplication(CodeElement):  # Not implemented now, so corresponding test
 
 class Macro:
 
+    name: str
+    args: OrderedDict[str, CodeElement | None]
+    code: CodeElement
+
     def __init__(
         self, name: str, args: OrderedDict[str, CodeElement | None], code: CodeElement
     ):
-        pass
+        assert isinstance(code, CodeBlock) or not args
+        self.name = name
+        self.args = args
+        self.code = code
+
+    def __call__(self, *args: CodeElement, **kwds: CodeElement) -> CodeElement:
+        if len(self.args) < len(args):
+            raise RainDuckArgumentError(
+                f"Too many arguments for macro {self.name} (max {len(self.args)} expected, {len(args)} given)"
+            )
+        code = self.code
+        if args or self.args:
+            if not self.args and isinstance(self.code, CodeBlock):
+                raise RainDuckArgumentError(f"Macro '{self.name}' takes no arguments.")
+            arguments = {}
+            for name, value in zip(self.args, args):
+                arguments[name] = value
+            for name, value in kwds.items():
+                if name not in self.args:
+                    raise RainDuckArgumentError(
+                        f"Macro '{self.name}' got an unexpected keyword argument: '{name}'"
+                    )
+                arguments[name] = value
+            for name, value2 in self.args.items():
+                if name not in arguments:
+                    if value2 is None:
+                        raise RainDuckArgumentError(f"Argument {name} not given.")
+                    arguments[name] = value2
+            macros = {}
+            print(f"args: {arguments}")
+            for name, value in arguments.items():
+                macros[name] = Macro(name, OrderedDict(), value)
+            code = cast(CodeBlock, code).add_macros(macros)
+        return code
 
 
 class CodeBlock(CodeElement):
 
     macros: dict[str, Macro]
+    my_macros: dict[str, Macro]
     parent: "CodeBlock | None"
     code: list[CodeElement]
 
     def __init__(
-        self, tokens: list[Token], macro_defs: list[Token], parent: "CodeBlock | None"
+        self,
+        tokens: list[Token] = [],
+        macro_defs: list[Token] = [],
+        parent: "CodeBlock | None" = None,
     ) -> None:
+        self.macros = {}
+        self.my_macros = self.macros
         while macro_defs:
             match macro_defs.pop(0):
                 case Word(name, line_pos, char_pos):
@@ -315,6 +370,11 @@ class CodeBlock(CodeElement):
                 return cls(tokens, macro_defs, parent)
         return None
 
+    def add_macros(self, macros: dict[str, Macro]) -> Self:
+        self.macros = self.my_macros | macros  # TODO: This should not be possible.
+        return self
+
+
 class MacroCall(CodeElement):
 
     name: str
@@ -324,16 +384,26 @@ class MacroCall(CodeElement):
     line_pos: int | None
     char_pos: int | None
 
-    def __init__(self, name: str, args: list[CodeElement] = [], kwds: dict[str, CodeElement] = {}, parent: CodeBlock | None = None, line_pos: int | None = None, char_pos: int | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        args: list[CodeElement] = [],
+        kwds: dict[str, CodeElement] = {},
+        parent: CodeBlock | None = None,
+        line_pos: int | None = None,
+        char_pos: int | None = None,
+    ) -> None:
         self.name = name
         self.args = args
-        self.kwds= kwds
+        self.kwds = kwds
         self.parent = parent
         self.line_pos = line_pos
         self.char_pos = char_pos
 
     @classmethod
-    def take(cls, code: list[Token], parent: "CodeBlock | None" = None) -> "CodeElement | None":
+    def take(
+        cls, code: list[Token], parent: "CodeBlock | None" = None
+    ) -> "CodeElement | None":
         match code[0]:
             case Word(name, line_pos, char_pos):
                 del code[0]
@@ -346,38 +416,62 @@ class MacroCall(CodeElement):
                             keywords = False
                             while code:
                                 if len(code) < 2:
-                                    raise RainDuckSyntaxError("Arguments not finished, missing ')'", bracket_line_pos, bracket_char_pos)
+                                    raise RainDuckSyntaxError(
+                                        "Arguments not finished, missing ')'",
+                                        bracket_line_pos,
+                                        bracket_char_pos,
+                                    )
                                 match code[0], code[1], keywords:
                                     case Word(argname), Char("=", lp, cp), _:
                                         del code[0]
                                         del code[1]
                                         if not code:
-                                            raise RainDuckSyntaxError("Expected argument value.", lp, cp)
+                                            raise RainDuckSyntaxError(
+                                                "Expected argument value.", lp, cp
+                                            )
                                         kwds[argname] = _take_elem(code, parent)
                                         keywords = True
                                     case _, _, False:
                                         args.append(_take_elem(code, parent))
                                     case t, _, True:
-                                        raise RainDuckArgumentError("Positional argument follows keyword argument.", t.line_pos, t.char_pos)
+                                        raise RainDuckArgumentError(
+                                            "Positional argument follows keyword argument.",
+                                            t.line_pos,
+                                            t.char_pos,
+                                        )
                                 if not code:
-                                    raise RainDuckSyntaxError("Arguments not finished, missing ')'", bracket_line_pos, bracket_char_pos)
+                                    raise RainDuckSyntaxError(
+                                        "Arguments not finished, missing ')'",
+                                        bracket_line_pos,
+                                        bracket_char_pos,
+                                    )
                                 match code.pop(0):
                                     case Char(";"):
                                         pass
                                     case Char(")"):
                                         break
                                     case _:
-                                        raise RainDuckSyntaxError("Expected ';' or ')'.")
+                                        raise RainDuckSyntaxError(
+                                            "Expected ';' or ')'."
+                                        )
                 return cls(name, args, kwds, parent, line_pos, char_pos)
         return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
         block = self.parent
-        while not(block is None):
+        while not (block is None):
             if self.name in block.macros:
-                return block.macros[self.name](*self.args, **self.kwds)
+                try:
+                    return block.macros[self.name](*self.args, **self.kwds).transpile(
+                        inverse
+                    )
+                except RainDuckError as e:
+                    e.add_pointer(self.line_pos, self.char_pos, self.name)
+                    raise e
             block = block.parent
-        raise RainDuckNameError(f"'{self.name}' is not defined.", self.line_pos, self.char_pos)
+        raise RainDuckNameError(
+            f"'{self.name}' is not defined.", self.line_pos, self.char_pos
+        )
 
 
 def _take_elem(tokens: list[Token], parent: "CodeBlock | None" = None) -> CodeElement:
