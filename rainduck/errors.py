@@ -44,9 +44,12 @@ class RainDuckError(Exception):
         else:
             self.traceback = []
 
-    def __str__(self, color: bool = False) -> str:
-        f = lambda x: x if color else ""
-        result = f("[bold red]") + self.name + f("[/bold red]") + ": " + self.message
+    def to_string(self, color: bool = False) -> str:
+        result = (
+            (f"[bold red]{self.name}[/bold red]" if color else self.name)
+            + ": "
+            + self.message
+        )
         if self.traceback:
             result += "\n" + "\n".join([str(t) for t in self.traceback[::-1]])
         return result
@@ -81,7 +84,10 @@ class RainDuckError(Exception):
             pointer.macro_name = macro_name
 
     def colored(self) -> str:
-        return self.__str__(color=True)
+        return self.to_string(color=True)
+
+    def __str__(self) -> str:
+        return self.to_string(color=False)
 
 
 class RainDuckTokenError(RainDuckError):
@@ -119,3 +125,7 @@ class RainDuckInversionError(RainDuckError):
     """Exception raised when code can't be inverter by negative nuber"""
 
     default_message = "Code can't be inverted"
+
+
+class RainDuckImportError(RainDuckError):
+    """Exception raised when fila can't be imported."""

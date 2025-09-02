@@ -1,15 +1,17 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from pathlib import Path
 from typing import Any, Self, Sequence, cast
 
 from rainduck.errors import (
     RainDuckArgumentError,
     RainDuckError,
+    RainDuckImportError,
     RainDuckInversionError,
     RainDuckNameError,
     RainDuckSyntaxError,
 )
-from rainduck.tokens import Char, Number, Token, Word
+from rainduck.tokens import Char, Number, Special, Token, Word
 
 
 class _CodeElementMeta(ABCMeta):
@@ -28,7 +30,10 @@ class _CodeElementMeta(ABCMeta):
                 code_elements.append(cls)
 
     def take(
-        cls, code: list[Token], parent: "CodeBlock | None" = None
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
     ) -> "CodeElement | None":
         pass
 
@@ -61,7 +66,12 @@ class BrainFuckOperation(BrainFuck):
         self.code = code
 
     @classmethod
-    def take(cls, code: list[Token], parent: "CodeBlock | None" = None) -> Self | None:
+    def take(
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
+    ) -> Self | None:
         fst = code[0]
         match fst:
             case Char(c) if c in "<>+-,.":
@@ -97,7 +107,10 @@ class BrainFuckLoop(BrainFuck):
 
     @classmethod
     def take(
-        cls, tokens: list[Token], parent: "CodeBlock | None" = None
+        cls,
+        tokens: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
     ) -> Self | None:
         match tokens[0]:
             case Char("[", line_pos, char_pos):
@@ -118,7 +131,7 @@ class BrainFuckLoop(BrainFuck):
                             code.append(t)
                 else:
                     raise RainDuckSyntaxError("Missing ']'", line_pos, char_pos)
-                return cls(parse_list(code, parent), line_pos, char_pos)
+                return cls(parse_list(code, parent, file_path), line_pos, char_pos)
         return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
@@ -155,12 +168,15 @@ class Multiplication(CodeElement):
 
     @classmethod
     def take(
-        cls, code: list[Token], parent: "CodeBlock | None" = None
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
     ) -> "CodeElement | None":
         match code[0]:
             case Number(n, line_pos, char_pos):
                 del code[0]
-                return cls(n, _take_elem(code, parent), line_pos, char_pos)
+                return cls(n, _take_elem(code, parent, file_path), line_pos, char_pos)
         return None
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
@@ -232,6 +248,7 @@ class CodeBlock(CodeElement):
         tokens: list[Token] = [],
         macro_defs: list[Token] = [],
         parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
     ) -> None:
         self.macros = {}
         self.my_macros = self.macros
@@ -247,7 +264,6 @@ class CodeBlock(CodeElement):
                         case Char("(", bracket_line_pos, bracket_char_pos):  # Take args
                             del macro_defs[0]
                             while macro_defs:
-                                print(name, "args:", macro_defs)
                                 token = macro_defs.pop(0)
                                 match token:
                                     case Char(")"):
@@ -273,7 +289,7 @@ class CodeBlock(CodeElement):
                                                         lp,
                                                     )
                                                 args[arg_name] = _take_elem(
-                                                    macro_defs, self
+                                                    macro_defs, self, file_path
                                                 )
                                                 if not macro_defs:
                                                     raise RainDuckSyntaxError(
@@ -298,15 +314,22 @@ class CodeBlock(CodeElement):
                         )
                     match macro_defs.pop(0):
                         case Char("="):
-                            block = CodeBlock.take(macro_defs, self)
+                            block = CodeBlock.take(macro_defs, self, file_path)
                             if block is None:
                                 t2: Token = macro_defs[0]
                                 raise RainDuckSyntaxError(
                                     "Code block expected.", t2.line_pos, t2.char_pos
                                 )
                             self.macros[name] = Macro(name, args, block)
+                case Special("import", import_path, lp, cp):
+                    if file_path is None:
+                        raise RainDuckImportError(
+                            "Imports not supported here: no file path.", lp, cp
+                        )
+                    imported_macros = _import(file_path, import_path)
+                    self.macros.update(imported_macros)
         self.parent = parent
-        self.code = parse_list(tokens, self)
+        self.code = parse_list(tokens, self, file_path)
 
     def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
         return sum(
@@ -315,8 +338,11 @@ class CodeBlock(CodeElement):
 
     @classmethod
     def take(
-        cls, code: list[Token], parent: "CodeBlock | None" = None
-    ) -> "CodeElement | None":
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
+    ) -> Self | None:
         match code[0]:
             case Char("{", char_pos, line_pos):
                 del code[0]
@@ -369,7 +395,7 @@ class CodeBlock(CodeElement):
                     raise RainDuckSyntaxError(
                         "End of file before end of let-lin block", char_pos, line_pos
                     )
-                return cls(tokens, macro_defs, parent)
+                return cls(tokens, macro_defs, parent, file_path)
         return None
 
     def add_macros(self, macros: dict[str, Macro]) -> Self:
@@ -404,7 +430,10 @@ class MacroCall(CodeElement):
 
     @classmethod
     def take(
-        cls, code: list[Token], parent: "CodeBlock | None" = None
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
     ) -> "CodeElement | None":
         match code[0]:
             case Word(name, line_pos, char_pos):
@@ -431,10 +460,12 @@ class MacroCall(CodeElement):
                                             raise RainDuckSyntaxError(
                                                 "Expected argument value.", lp, cp
                                             )
-                                        kwds[argname] = _take_elem(code, parent)
+                                        kwds[argname] = _take_elem(
+                                            code, parent, file_path
+                                        )
                                         keywords = True
                                     case _, _, False:
-                                        args.append(_take_elem(code, parent))
+                                        args.append(_take_elem(code, parent, file_path))
                                     case t, _, True:
                                         raise RainDuckArgumentError(
                                             "Positional argument follows keyword argument.",
@@ -476,9 +507,36 @@ class MacroCall(CodeElement):
         )
 
 
-def _take_elem(tokens: list[Token], parent: "CodeBlock | None" = None) -> CodeElement:
+def _import(
+    file_path: Path,
+    import_path: str,
+    line_pos: int | None = None,
+    char_pos: int | None = None,
+) -> dict[str, Macro]:
+    path = file_path.parent / import_path
+    if not path.is_file():
+        raise RainDuckImportError(f"File {import_path} not found.", line_pos, char_pos)
+    with path.open() as f:
+        imported_code = f.read()
+    try:
+        from rainduck.transpiler import parse
+
+        imported_macros = parse(imported_code, path).macros
+    except RainDuckError as e:
+        e.add_pointer(line_pos, char_pos, import_path)
+        raise e
+    for m in imported_macros.values():
+        m.name = import_path + ": " + m.name
+    return imported_macros
+
+
+def _take_elem(
+    tokens: list[Token],
+    parent: "CodeBlock | None" = None,
+    file_path: Path | None = None,
+) -> CodeElement:
     for elem_cls in code_elements:
-        elem = elem_cls.take(tokens, parent)
+        elem = elem_cls.take(tokens, parent, file_path)
         if not (elem is None):
             return elem
     t = tokens[0]
@@ -486,9 +544,11 @@ def _take_elem(tokens: list[Token], parent: "CodeBlock | None" = None) -> CodeEl
 
 
 def parse_list(
-    tokens: list[Token], parent: "CodeBlock | None" = None
+    tokens: list[Token],
+    parent: "CodeBlock | None" = None,
+    file_path: Path | None = None,
 ) -> list[CodeElement]:
     result = []
     while tokens:
-        result.append(_take_elem(tokens, parent))
+        result.append(_take_elem(tokens, parent, file_path))
     return result

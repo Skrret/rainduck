@@ -24,7 +24,15 @@ class Char:
     char_pos: int
 
 
-Token = Word | Number | Char
+@dataclass
+class Special:
+    name: str
+    value: str
+    line_pos: int
+    char_pos: int
+
+
+Token = Word | Number | Char | Special
 
 
 def _take_word(
@@ -57,6 +65,37 @@ def _take_num(
     return Number(int(number), line_pos, char_pos), char_pos + len(number) - 1
 
 
+def _take_special(
+    code: list[str], line_pos: int, char_pos: int
+) -> tuple[Special, int, int]:
+    start_line_pos = line_pos
+    start_char_pos = char_pos
+    if not code:
+        raise errors.RainDuckSyntaxError(
+            "Expected special expression name.", line_pos, char_pos
+        )
+    name, char_pos = _take_word("", code, line_pos, char_pos)
+    value = ""
+    if code and code[0] == "(":
+        del code[0]
+        char_pos += 1
+        brackets = 0
+        while code:
+            c = code.pop(0)
+            if c == "\n":
+                line_pos += 1
+                char_pos = 0
+            char_pos += 1
+            if c == "(":
+                brackets += 1
+            elif c == ")" and brackets == 0:
+                break
+            elif c == ")":
+                brackets -= 1
+            value += c
+    return Special(name.word, value, start_line_pos, start_char_pos), line_pos, char_pos
+
+
 def tokenize(code: str) -> list[Token]:
     """Take RainDuck code and return list of tokens."""
     code_list = list(code)
@@ -69,6 +108,9 @@ def tokenize(code: str) -> list[Token]:
         if char == "\n":
             char_pos = 0
             line_pos += 1
+        elif char == "#":
+            special, line_pos, char_pos = _take_special(code_list, line_pos, char_pos)
+            result.append(special)
         elif char.isalpha() or char == "_":
             word, char_pos = _take_word(char, code_list, line_pos, char_pos)
             result.append(word)
