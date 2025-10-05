@@ -17,7 +17,12 @@ rainduck my-program.rd
 
 # use your favourite BrainFuck compiler or interpreter
 brainfuck my-program.bf
+
+# or use pipe
+rainduck my-program.rd --stdout | brainfuck
 ```
+
+Run `rainduck --help` for more options.
 
 ### Basic Syntax
 

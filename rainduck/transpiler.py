@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rainduck.code_elements import CodeBlock
+from rainduck.code_elements import CodeBlock, Comment
 from rainduck.errors import RainDuckSyntaxError
 from rainduck.tokens import tokenize
 
@@ -16,7 +16,7 @@ def parse(code: str, file_path: Path | None = None) -> CodeBlock:
     return block
 
 
-def transpile(code: str, file_path: Path | None = None) -> str:
+def transpile(code: str, file_path: Path | None = None, comments: bool = True) -> str:
     block = parse(code, file_path)
     bf = block.transpile()
-    return "".join(str(x) for x in bf)
+    return "".join(str(x) for x in bf if comments or not isinstance(x, Comment))
