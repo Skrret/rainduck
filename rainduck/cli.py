@@ -12,7 +12,9 @@ err_console = Console(stderr=True)
 
 
 @app.command()
-def main(source: str, output: str | None = None, stdout: bool = False, comments: bool = True) -> None:
+def main(
+    source: str, output: str | None = None, stdout: bool = False, comments: bool = True
+) -> None:
     source_path = Path(source)
     with source_path.open() as f:
         rainduck = f.read()

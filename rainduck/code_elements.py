@@ -232,7 +232,7 @@ class Macro:
             macros = {}
             for name, value in arguments.items():
                 macros[name] = Macro(name, OrderedDict(), value)
-            code = cast(CodeBlock, code).add_macros(macros)
+            code = CodeWithArguments(cast(CodeBlock, code), macros)
         return code
 
 
@@ -331,10 +331,16 @@ class CodeBlock(CodeElement):
         self.parent = parent
         self.code = parse_list(tokens, self, file_path)
 
-    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
-        return sum(
+    def transpile(
+        self, inverse: bool = False, arguments: dict[str, Macro] = {}
+    ) -> list["BrainFuck"]:
+        old_macros = self.macros
+        self.macros = old_macros | arguments
+        result = sum(
             [elem.transpile(inverse) for elem in self.code[:: -1 if inverse else 1]], []
         )
+        self.macros = old_macros
+        return result
 
     @classmethod
     def take(
@@ -397,10 +403,6 @@ class CodeBlock(CodeElement):
                     )
                 return cls(tokens, macro_defs, parent, file_path)
         return None
-
-    def add_macros(self, macros: dict[str, Macro]) -> Self:
-        self.macros = self.my_macros | macros  # TODO: This should not be possible.
-        return self
 
 
 class MacroCall(CodeElement):
@@ -505,6 +507,19 @@ class MacroCall(CodeElement):
         raise RainDuckNameError(
             f"'{self.name}' is not defined.", self.line_pos, self.char_pos
         )
+
+
+class CodeWithArguments(CodeElement):
+    code: CodeBlock
+    arguments: dict[str, Macro]
+    assign_to_list = False
+
+    def __init__(self, code: CodeBlock, arguments: dict[str, Macro]) -> None:
+        self.code = code
+        self.arguments = arguments
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        return self.code.transpile(inverse, arguments=self.arguments)
 
 
 class Inverse(CodeElement):
