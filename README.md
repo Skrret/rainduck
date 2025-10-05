@@ -24,12 +24,15 @@ brainfuck my-program.bf
 ```rainduck
 // comments are created with '//'
 let // if you want to define macros, you must start with the word 'let'
-#import(folder/file.rd) // imports all global macros in folder/file.rd
+#import(../folder/file.rd) // imports all global macros in ../folder/file.rd
 clear = {[-]} // macro without arguments
 five_left = {5<} // integer repeats given string
 ten_right = {-2five_left} // negative integer reverses string and turns > <-> < and + <-> -
 error = {-3[+]} // loop cannot be inverted, this raises an error...
 no_error = {-1 error} // ...but double iversion doesn't have effect, this raises no error
+// using ?<element>:<element> syntax, you can specify normal and inverted version of some code:
+move_left_to_zero = {?{<[<]}:{>[>]}}
+move_right_to_zero = {-1move_left_to_zero} // >[>]
 move_cell(
     from;
     to = < // default value for this argument
@@ -50,7 +53,7 @@ move( // macro call
 
 ## Contributing
 
-Pull requests are welcome.
+Pull requests are welcome. I also welcome remarks about anything I've done incorrectly or improperly.
 
 ## License
 

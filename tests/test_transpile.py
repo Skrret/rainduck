@@ -63,6 +63,15 @@ def test_macro(macros, code):
 
 
 @pytest.mark.parametrize(
+    ("normal", "inverted"), [("-3 +", "{}"), ("{let x={<} in x -1x}", ",")]
+)
+def test_inverse(normal, inverted):
+    """Test if ?: syntax works as expected"""
+    assert transpile(f"?{normal}:{inverted}") == transpile(normal)
+    assert transpile(f"-1?{normal}:{inverted}") == transpile(inverted)
+
+
+@pytest.mark.parametrize(
     ("rainduck", "braifuck"),
     [
         ("let id(x={}) = {x} in id id(2[>])", "[>][>]"),

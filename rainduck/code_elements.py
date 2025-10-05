@@ -507,6 +507,57 @@ class MacroCall(CodeElement):
         )
 
 
+class Inverse(CodeElement):
+    normal: CodeElement
+    inverted: CodeElement
+    line_pos: int | None
+    char_pos: int | None
+
+    def __init__(
+        self,
+        normal: CodeElement,
+        inverted: CodeElement,
+        line_pos: int | None = None,
+        char_pos: int | None = None,
+    ) -> None:
+        self.normal = normal
+        self.inverted = inverted
+        self.line_pos = line_pos
+        self.char_pos = char_pos
+
+    @classmethod
+    def take(
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
+    ) -> "CodeElement | None":
+        match code[0]:
+            case Char("?", line_pos, char_pos):
+                del code[0]
+                if len(code) < 3:
+                    raise RainDuckSyntaxError(
+                        "Expected '?<element>:<element>", line_pos, char_pos
+                    )
+                normal = _take_elem(code, parent, file_path)
+                next = code.pop(0)
+                if not (isinstance(next, Char) and next.char == ":"):
+                    raise RainDuckSyntaxError(
+                        "Expected '?<element>:<element>", line_pos, char_pos
+                    )
+                inverted = _take_elem(code, parent, file_path)
+                return cls(normal, inverted, line_pos, char_pos)
+        return None
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        try:
+            return (self.inverted if inverse else self.normal).transpile(False)
+        except RainDuckInversionError as e:
+            if inverse:
+                e.add_pointer(self.line_pos, self.char_pos)
+            raise e
+
+
 def _import(
     file_path: Path,
     import_path: str,
