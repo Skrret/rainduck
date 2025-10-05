@@ -558,6 +558,32 @@ class Inverse(CodeElement):
             raise e
 
 
+class Comment(BrainFuck):
+    text: str
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+    @classmethod
+    def take(
+        cls,
+        code: list[Token],
+        parent: "CodeBlock | None" = None,
+        file_path: Path | None = None,
+    ) -> "CodeElement | None":
+        first = code[0]
+        if not (isinstance(first, Special) and first.name == "comment"):
+            return None
+        del code[0]
+        return cls(first.value)
+
+    def transpile(self, inverse: bool = False) -> list["BrainFuck"]:
+        return [self]
+
+    def __str__(self) -> str:
+        return self.text
+
+
 def _import(
     file_path: Path,
     import_path: str,

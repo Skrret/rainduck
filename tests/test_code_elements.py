@@ -4,6 +4,7 @@ from rainduck.code_elements import (
     BrainFuckLoop,
     BrainFuckOperation,
     CodeBlock,
+    Comment,
     Inverse,
     Multiplication,
     code_elements,
@@ -19,6 +20,7 @@ from rainduck.tokens import Char, Number, Word, tokenize
         ("-31[9<+]", Multiplication, "5[,]"),
         ("{<2[-,]+++}", CodeBlock, "]-1<>>"),
         ("?6+:{<<+}", Inverse, "---"),
+        ("#comment(\nThis is comment.)", Comment, ")}-"),
     ],
 )
 def test_take(code, element, rest):

@@ -76,6 +76,7 @@ def test_inverse(normal, inverted):
     [
         ("let id(x={}) = {x} in id id(2[>])", "[>][>]"),
         ("let a_then_b(a; b) //calls a and then b\n={a b}in a_then_b(b=<; a=>)", "><"),
+        (">2{#comment(ABC\n)}", ">ABC\nABC\n"),
     ],
 )
 def test_transpile(rainduck, braifuck):

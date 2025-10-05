@@ -49,6 +49,7 @@ move( // macro call
     };
     >
 )
+#comment(This comment will be also in final brainfuck code.)
 ```
 
 ## Contributing
