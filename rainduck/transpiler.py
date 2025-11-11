@@ -16,7 +16,25 @@ def parse(code: str, file_path: Path | None = None) -> CodeBlock:
     return block
 
 
-def transpile(code: str, file_path: Path | None = None, comments: bool = True) -> str:
+def transpile(
+    code: str,
+    file_path: Path | None = None,
+    comments: bool = True,
+    optimize: bool = False,
+) -> str:
     block = parse(code, file_path)
     bf = block.transpile()
-    return "".join(str(x) for x in bf if comments or not isinstance(x, Comment))
+    result = "".join(str(x) for x in bf if comments or not isinstance(x, Comment))
+    if optimize:
+        result = optimize_bf(result)
+    return result
+
+
+def optimize_bf(code: str) -> str:
+    result: list[str] = []
+    for char in code:
+        if result and result[-1] == {">": "<", "<": ">", "+": "-", "-": "+"}.get(char):
+            del result[-1]
+            continue
+        result += char
+    return "".join(result)

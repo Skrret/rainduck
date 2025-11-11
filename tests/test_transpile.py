@@ -1,6 +1,6 @@
 import pytest
 
-from rainduck.transpiler import transpile
+from rainduck.transpiler import optimize_bf, transpile
 
 bf_codes = ["", "<>+-,.", "+[<>>[[-+]],]..", "[[[]]]", "."]
 
@@ -81,3 +81,18 @@ def test_inverse(normal, inverted):
 )
 def test_transpile(rainduck, braifuck):
     assert transpile(rainduck) == braifuck
+
+
+@pytest.mark.parametrize(
+    "code", ["", ">>><[-+-><<<+-+>>><]><<<", "Hello<<>, --+ World-+"]
+)
+def test_optimize_bf(code: str):
+    optimized = optimize_bf(code)
+    assert "><" not in optimized
+    assert "<>" not in optimized
+    assert "+-" not in optimized
+    assert "-+" not in optimized
+    assert code.count(">") - code.count("<") == code.count("+") - code.count("-")
+    assert code.replace(">", "").replace("<", "").replace("+", "").replace(
+        "-", ""
+    ) == code.replace(">", "").replace("<", "").replace("+", "").replace("-", "")

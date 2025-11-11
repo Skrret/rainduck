@@ -13,13 +13,17 @@ err_console = Console(stderr=True)
 
 @app.command()
 def main(
-    source: str, output: str | None = None, stdout: bool = False, comments: bool = True
+    source: str,
+    output: str | None = None,
+    stdout: bool = False,
+    comments: bool = True,
+    optimize: bool = True,
 ) -> None:
     source_path = Path(source)
     with source_path.open() as f:
         rainduck = f.read()
     try:
-        brainfuck = transpile(rainduck, source_path, comments)
+        brainfuck = transpile(rainduck, source_path, comments, optimize)
     except RainDuckError as e:
         err_console.print(e.colored())
         sys.exit(1)
