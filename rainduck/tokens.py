@@ -122,6 +122,13 @@ def tokenize(code: str) -> list[Token]:
                 char_pos,
             ) = _take_num(char, code_list, line_pos, char_pos)
             result.append(num)
+        elif char == "@":
+            if not code_list or code_list[0] == "\n":
+                raise errors.RainDuckSyntaxError(
+                    "Expected character", line_pos, char_pos
+                )
+            result.append(Number(ord(code_list.pop(0)), line_pos, char_pos))
+            char_pos += 1
         elif char == "/" and code_list and code_list[0] == "/":
             if "\n" in code_list:
                 del code_list[: code_list.index("\n")]

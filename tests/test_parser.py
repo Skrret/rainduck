@@ -7,7 +7,7 @@ def test_tokenization():
     """Test if result of tokens.tokenize function corresponds with the
     expected.
     """
-    code = tokens.tokenize("let a()\n ={<>.,[]+--2_3_b}")
+    code = tokens.tokenize("let a()\n ={<>.,[]+--2_3_b @3}")
     assert code == [
         tokens.Word("let", 1, 1),
         tokens.Word("a", 1, 5),
@@ -16,5 +16,6 @@ def test_tokenization():
         *[tokens.Char("={<>.,[]+-"[i], 2, 2 + i) for i in range(10)],
         tokens.Number(-23, 2, 12),
         tokens.Word("_b", 2, 16),
-        tokens.Char("}", 2, 18),
+        tokens.Number(51, 2, 19),
+        tokens.Char("}", 2, 21),
     ]
