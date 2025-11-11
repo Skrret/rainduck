@@ -54,6 +54,9 @@ move( // macro call
     };
     >
 )
+
+// `@<character>` is treated as a number equal to ASCII/UNICODE code of the character.
+@B+ . @B- @F+ . @F- @! .
 #comment(This comment will be also in final brainfuck code.)
 ```
 
